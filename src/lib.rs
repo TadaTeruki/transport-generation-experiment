@@ -1,3 +1,4 @@
+/*
 use fastlem::models::surface::sites::Site2D;
 
 mod terrain;
@@ -14,3 +15,7 @@ fn main() {
     let image_buf = terrain.render_terrain(img_width, img_height);
     image_buf.save("image.png").unwrap();
 }
+*/
+
+pub mod terrain;
+pub mod transport;
