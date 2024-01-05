@@ -5,29 +5,7 @@ use fastlem::models::surface::terrain::Terrain2D;
 use noise::{NoiseFn, Perlin};
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
-#[derive(Clone, Copy)]
-pub struct Site2D {
-    x: f64,
-    y: f64,
-}
-
-#[wasm_bindgen]
-impl Site2D {
-    #[wasm_bindgen(constructor)]
-    pub fn new(x: f64, y: f64) -> Self {
-        Self { x, y }
-    }
-}
-
-impl Into<fastlem::models::surface::sites::Site2D> for Site2D {
-    fn into(self) -> fastlem::models::surface::sites::Site2D {
-        fastlem::models::surface::sites::Site2D {
-            x: self.x,
-            y: self.y,
-        }
-    }
-}
+use crate::Site2D;
 
 fn octaved_perlin(perlin: &Perlin, x: f64, y: f64, octaves: usize, persistence: f64) -> f64 {
     let mut value = 0.0;
@@ -70,12 +48,24 @@ impl TerrainBuilder {
         }
     }
 
-    pub fn set_bound_min(self, bound_min: Site2D) -> Self {
-        Self { bound_min, ..self }
+    pub fn set_bound_min(self, bound_min_x: f64, bound_min_y: f64) -> Self {
+        Self {
+            bound_min: Site2D {
+                x: bound_min_x,
+                y: bound_min_y,
+            },
+            ..self
+        }
     }
 
-    pub fn set_bound_max(self, bound_max: Site2D) -> Self {
-        Self { bound_max, ..self }
+    pub fn set_bound_max(self, bound_max_x: f64, bound_max_y: f64) -> Self {
+        Self {
+            bound_max: Site2D {
+                x: bound_max_x,
+                y: bound_max_y,
+            },
+            ..self
+        }
     }
 
     pub fn set_node_num(self, node_num: usize) -> Self {
@@ -136,79 +126,11 @@ impl TerrainBuilder {
 
 #[wasm_bindgen]
 impl Terrain {
-    pub fn get_altitude(&self, site: Site2D) -> Option<f64> {
+    pub fn get_altitude(&self, site_x: f64, site_y: f64) -> Option<f64> {
+        let site = Site2D {
+            x: site_x,
+            y: site_y,
+        };
         self.terrain.get_altitude(&site.into())
     }
-    /*
-    pub fn render_terrain(
-        &self,
-        img_width: u32,
-        img_height: u32,
-    ) -> image::ImageBuffer<image::Rgb<u8>, Vec<u8>> {
-        // (color: [u8; 3], altitude: f64)
-        let color_table: Vec<([u8; 3], f64)> = vec![
-            ([70, 150, 200], 0.0),
-            ([240, 240, 210], 0.1),
-            ([190, 200, 120], 0.3),
-            ([25, 100, 25], 6.0),
-            ([15, 60, 15], 8.0),
-        ];
-
-        // get color from altitude
-        let get_color = |altitude: f64| -> [u8; 3] {
-            let color_index = {
-                let mut i = 0;
-                while i < color_table.len() {
-                    if altitude < color_table[i].1 {
-                        break;
-                    }
-                    i += 1;
-                }
-                i
-            };
-
-            if color_index == 0 {
-                color_table[0].0
-            } else if color_index == color_table.len() {
-                color_table[color_table.len() - 1].0
-            } else {
-                let color_a = color_table[color_index - 1];
-                let color_b = color_table[color_index];
-
-                let prop_a = color_a.1;
-                let prop_b = color_b.1;
-
-                let prop = (altitude - prop_a) / (prop_b - prop_a);
-
-                [
-                    (color_a.0[0] as f64 + (color_b.0[0] as f64 - color_a.0[0] as f64) * prop)
-                        as u8,
-                    (color_a.0[1] as f64 + (color_b.0[1] as f64 - color_a.0[1] as f64) * prop)
-                        as u8,
-                    (color_a.0[2] as f64 + (color_b.0[2] as f64 - color_a.0[2] as f64) * prop)
-                        as u8,
-                ]
-            }
-        };
-
-        let mut image_buf = image::RgbImage::new(img_width, img_height);
-
-        for imgx in 0..img_width {
-            for imgy in 0..img_height {
-                let x = self.bound_min.x
-                    + (self.bound_max.x - self.bound_min.x) * (imgx as f64 / img_width as f64);
-                let y = self.bound_min.y
-                    + (self.bound_max.y - self.bound_min.y) * (imgy as f64 / img_height as f64);
-                let site = Site2D { x, y };
-                let altitude = self.terrain.get_altitude(&site);
-                if let Some(altitude) = altitude {
-                    let color = get_color(altitude);
-                    image_buf.put_pixel(imgx, imgy, image::Rgb(color));
-                }
-            }
-        }
-
-        image_buf
-    }
-    */
 }

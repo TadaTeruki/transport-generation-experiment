@@ -1,5 +1,8 @@
 import './style.css';
-import init, { Site2D, TerrainBuilder } from '../pkg/transport.js';
+import init, {
+    TerrainBuilder,
+    TransportNetworkBuilder,
+} from '../pkg/transport.js';
 
 window.onload = async () => {
     await init();
@@ -7,9 +10,9 @@ window.onload = async () => {
     const bound_max = { x: 100.0, y: 100.0 };
 
     const terrain = new TerrainBuilder()
-        .set_bound_max(new Site2D(bound_max.x, bound_max.y))
+        .set_bound_max(bound_max.x, bound_max.y)
         .set_node_num(node_num)
-        .set_seed(72)
+        .set_seed(500)
         .build();
 
     const img_width = 500;
@@ -19,8 +22,7 @@ window.onload = async () => {
         for (let imgy = 0; imgy < img_height; imgy++) {
             const x = bound_max.x * (imgx / img_width);
             const y = bound_max.y * (imgy / img_height);
-            const site = new Site2D(x, y);
-            const altitude = terrain.get_altitude(site);
+            const altitude = terrain.get_altitude(x, y);
             if (altitude) {
                 const color = get_color(altitude);
                 const index = (imgx + imgy * img_width) * 4;
@@ -32,6 +34,11 @@ window.onload = async () => {
         }
     }
 
+    const transport = new TransportNetworkBuilder()
+        .set_start(bound_max.x / 2.0, bound_max.y / 2.0)
+        .set_iterations(100)
+        .build();
+
     let canvas = document.getElementById('canvasMain') as HTMLCanvasElement;
     canvas.width = img_width;
     canvas.height = img_height;
@@ -39,6 +46,28 @@ window.onload = async () => {
     let imageData = ctx.createImageData(img_width, img_height);
     imageData.data.set(image_buf);
     ctx.putImageData(imageData, 0, 0);
+
+    ctx.lineWidth = 5;
+    for (let i = 0; i < transport.num_nodes(); i++) {
+        const site = transport.get_site(i);
+        const neighbors = transport.get_neighbors(i);
+        for (let j = 0; j < neighbors.length; j++) {
+            const neighbor = transport.get_site(neighbors[j]);
+            const [sx, sy] = [
+                (site.x / bound_max.x) * img_width,
+                (site.y / bound_max.y) * img_height,
+            ];
+            const [ex, ey] = [
+                (neighbor.x / bound_max.x) * img_width,
+                (neighbor.y / bound_max.y) * img_height,
+            ];
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.stroke();
+        }
+    }
 };
 
 const color_table: [[number, number, number], number][] = [
