@@ -28,7 +28,6 @@ pub struct TerrainBuilder {
     bound_min: Site2D,
     bound_max: Site2D,
     node_num: usize,
-    seed: u32,
 }
 
 #[wasm_bindgen]
@@ -44,7 +43,6 @@ impl TerrainBuilder {
             bound_min: Site2D { x: 0.0, y: 0.0 },
             bound_max: Site2D { x: 0.0, y: 0.0 },
             node_num: 0,
-            seed: 0,
         }
     }
 
@@ -72,11 +70,7 @@ impl TerrainBuilder {
         Self { node_num, ..self }
     }
 
-    pub fn set_seed(self, seed: u32) -> Self {
-        Self { seed, ..self }
-    }
-
-    pub fn build(&self) -> Terrain {
+    pub fn build(self, seed: u32) -> Terrain {
         let model = TerrainModel2DBulider::from_random_sites(
             self.node_num,
             self.bound_min.into(),
@@ -89,7 +83,7 @@ impl TerrainBuilder {
 
         let sites = model.sites().to_vec();
 
-        let perlin = Perlin::new(self.seed);
+        let perlin = Perlin::new(seed);
 
         let terrain = TerrainGenerator::default()
             .set_model(model)

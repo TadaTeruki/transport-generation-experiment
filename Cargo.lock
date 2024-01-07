@@ -686,6 +686,7 @@ dependencies = [
  "getrandom 0.2.11",
  "image",
  "noise",
+ "rand 0.8.5",
  "terrain-graph",
  "wasm-bindgen",
 ]

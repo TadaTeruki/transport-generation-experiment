@@ -6,16 +6,15 @@ import init, {
 
 window.onload = async () => {
     await init();
-    const node_num = 30000;
-    const bound_max = { x: 100.0, y: 100.0 };
+    const node_num = 20000;
+    const bound_max = { x: 200.0, y: 100.0 };
 
     const terrain = new TerrainBuilder()
         .set_bound_max(bound_max.x, bound_max.y)
         .set_node_num(node_num)
-        .set_seed(500)
-        .build();
+        .build(100);
 
-    const img_width = 500;
+    const img_width = 1000;
     const img_height = 500;
     let image_buf = new Uint8ClampedArray(img_width * img_height * 4);
     for (let imgx = 0; imgx < img_width; imgx++) {
@@ -36,8 +35,11 @@ window.onload = async () => {
 
     const transport = new TransportNetworkBuilder()
         .set_start(bound_max.x / 2.0, bound_max.y / 2.0)
-        .set_iterations(100)
-        .build();
+        .set_iterations(0)
+        .set_branch_angle_deviation(Math.PI / 8.0)
+        .set_branch_length(2.0)
+        .set_branch_max_angle(Math.PI / 4.0)
+        .build(500, terrain);
 
     let canvas = document.getElementById('canvasMain') as HTMLCanvasElement;
     canvas.width = img_width;
@@ -47,7 +49,7 @@ window.onload = async () => {
     imageData.data.set(image_buf);
     ctx.putImageData(imageData, 0, 0);
 
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 3;
     for (let i = 0; i < transport.num_nodes(); i++) {
         const site = transport.get_site(i);
         const neighbors = transport.get_neighbors(i);
@@ -74,6 +76,7 @@ const color_table: [[number, number, number], number][] = [
     [[70, 150, 200], 0.0],
     [[240, 240, 210], 0.1],
     [[190, 200, 120], 0.3],
+    [[170, 180, 100], 1.8],
     [[25, 100, 25], 6.0],
     [[15, 60, 15], 8.0],
     [[255, 255, 255], 15.0],
