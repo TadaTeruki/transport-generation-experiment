@@ -20,6 +20,7 @@ pub struct TransportNetworkBuilder {
     branch_length: f64,
     branch_angle_deviation: f64,
     branch_max_angle: f64,
+    rotation_probability: f64,
     iterations: usize,
 }
 struct Path {
@@ -61,6 +62,7 @@ impl TransportNetworkBuilder {
             branch_length: 0.0,
             branch_angle_deviation: 0.0,
             branch_max_angle: 0.0,
+            rotation_probability: 0.0,
             iterations: 0,
         }
     }
@@ -96,6 +98,13 @@ impl TransportNetworkBuilder {
     pub fn set_branch_max_angle(self, branch_max_angle: f64) -> Self {
         Self {
             branch_max_angle,
+            ..self
+        }
+    }
+
+    pub fn set_rotation_probability(self, rotation_probability: f64) -> Self {
+        Self {
+            rotation_probability,
             ..self
         }
     }
@@ -169,8 +178,8 @@ impl TransportNetworkBuilder {
                 return;
             }
             let current_path = current_path.unwrap();
-            let site_start = &sites_collection[current_path.start];
-            let site_end = &sites_collection[current_path.end];
+            let site_start = sites_collection[current_path.start];
+            let site_end = sites_collection[current_path.end];
 
             let mut site_next: Option<Site2D> = None;
             let mut min_cost = std::f64::MAX;
@@ -178,67 +187,85 @@ impl TransportNetworkBuilder {
             let mut min_cost_altitude = 0.0;
             let check_times = (self.branch_max_angle / self.branch_angle_deviation).ceil() as usize;
 
-            (0..check_times).for_each(|i| {
-                let angle = current_path.angle + self.branch_angle_deviation * (i as f64);
-                let site_a = Site2D {
-                    x: site_end.0.x + self.branch_length * angle.cos(),
-                    y: site_end.0.y + self.branch_length * angle.sin(),
-                };
-                let altitude_a = terrain.get_altitude(site_a.x, site_a.y);
-                if let Some(altitude_a) = altitude_a {
-                    if let Some(cost) = self.evaluate_cost(
-                        terrain,
-                        &site_start.0,
-                        site_start.1,
-                        &site_a,
-                        altitude_a,
-                    ) {
-                        if cost < min_cost {
-                            min_cost = cost;
-                            min_cost_angle = angle;
-                            min_cost_altitude = altitude_a;
-                            site_next = Some(site_a);
-                        }
-                    }
+            let rotation_iteration_start = {
+                if rng.gen_bool(self.rotation_probability) {
+                    -1
+                } else {
+                    0
                 }
+            };
+            let rotation_iteration_end = {
+                if rng.gen_bool(self.rotation_probability) {
+                    1
+                } else {
+                    0
+                }
+            };
 
-                if i == 0 {
-                    return;
-                }
-                let angle = current_path.angle - self.branch_angle_deviation * (i as f64);
-                let site_b = Site2D {
-                    x: site_end.0.x + self.branch_length * angle.cos(),
-                    y: site_end.0.y + self.branch_length * angle.sin(),
-                };
-                let altitude_b = terrain.get_altitude(site_b.x, site_b.y);
-                if let Some(altitude_b) = altitude_b {
-                    if let Some(cost) = self.evaluate_cost(
-                        terrain,
-                        &site_start.0,
-                        site_start.1,
-                        &site_b,
-                        altitude_b,
-                    ) {
-                        if cost < min_cost {
-                            min_cost = cost;
-                            min_cost_angle = angle;
-                            min_cost_altitude = altitude_b;
-                            site_next = Some(site_b);
+            (rotation_iteration_start..rotation_iteration_end + 1).for_each(|riter| {
+                let current_angle = current_path.angle + riter as f64 * std::f64::consts::PI * 0.5;
+                (0..check_times).for_each(|i| {
+                    let angle = current_angle + self.branch_angle_deviation * (i as f64);
+                    let site_a = Site2D {
+                        x: site_end.0.x + self.branch_length * angle.cos(),
+                        y: site_end.0.y + self.branch_length * angle.sin(),
+                    };
+                    let altitude_a = terrain.get_altitude(site_a.x, site_a.y);
+                    if let Some(altitude_a) = altitude_a {
+                        if let Some(cost) = self.evaluate_cost(
+                            terrain,
+                            &site_start.0,
+                            site_start.1,
+                            &site_a,
+                            altitude_a,
+                        ) {
+                            if cost < min_cost {
+                                min_cost = cost;
+                                min_cost_angle = angle;
+                                min_cost_altitude = altitude_a;
+                                site_next = Some(site_a);
+                            }
                         }
                     }
+
+                    if i == 0 {
+                        return;
+                    }
+                    let angle = current_angle - self.branch_angle_deviation * (i as f64);
+                    let site_b = Site2D {
+                        x: site_end.0.x + self.branch_length * angle.cos(),
+                        y: site_end.0.y + self.branch_length * angle.sin(),
+                    };
+                    let altitude_b = terrain.get_altitude(site_b.x, site_b.y);
+                    if let Some(altitude_b) = altitude_b {
+                        if let Some(cost) = self.evaluate_cost(
+                            terrain,
+                            &site_start.0,
+                            site_start.1,
+                            &site_b,
+                            altitude_b,
+                        ) {
+                            if cost < min_cost {
+                                min_cost = cost;
+                                min_cost_angle = angle;
+                                min_cost_altitude = altitude_b;
+                                site_next = Some(site_b);
+                            }
+                        }
+                    }
+                });
+
+                if let Some(site_next) = site_next {
+                    let site_next_index = sites_collection.len();
+                    sites_collection.push((site_next, min_cost_altitude));
+                    path_heap.push(Path {
+                        start: current_path.end,
+                        end: site_next_index,
+                        angle: min_cost_angle,
+                        cost: min_cost,
+                    });
                 }
             });
-
-            if let Some(site_next) = site_next {
-                let site_next_index = sites_collection.len();
-                sites_collection.push((site_next, min_cost_altitude));
-                path_heap.push(Path {
-                    start: current_path.end,
-                    end: site_next_index,
-                    angle: min_cost_angle,
-                    cost: min_cost,
-                });
-            }
 
             final_paths.push(current_path);
         });

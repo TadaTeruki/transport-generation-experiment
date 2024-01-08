@@ -35,11 +35,12 @@ window.onload = async () => {
 
     const transport = new TransportNetworkBuilder()
         .set_start(bound_max.x / 2.0, bound_max.y / 2.0)
-        .set_iterations(0)
+        .set_iterations(400)
         .set_branch_angle_deviation(Math.PI / 8.0)
         .set_branch_length(2.0)
+        .set_rotation_probability(0.1)
         .set_branch_max_angle(Math.PI / 4.0)
-        .build(500, terrain);
+        .build(800, terrain);
 
     let canvas = document.getElementById('canvasMain') as HTMLCanvasElement;
     canvas.width = img_width;
@@ -76,7 +77,7 @@ const color_table: [[number, number, number], number][] = [
     [[70, 150, 200], 0.0],
     [[240, 240, 210], 0.1],
     [[190, 200, 120], 0.3],
-    [[170, 180, 100], 1.8],
+    [[170, 180, 100], 2.0],
     [[25, 100, 25], 6.0],
     [[15, 60, 15], 8.0],
     [[255, 255, 255], 15.0],
