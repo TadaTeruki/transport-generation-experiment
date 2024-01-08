@@ -687,6 +687,7 @@ dependencies = [
  "image",
  "noise",
  "rand 0.8.5",
+ "rstar",
  "terrain-graph",
  "wasm-bindgen",
 ]

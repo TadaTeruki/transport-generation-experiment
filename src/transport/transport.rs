@@ -4,7 +4,14 @@ use rand::{rngs::StdRng, Rng, SeedableRng};
 use terrain_graph::undirected::UndirectedGraph;
 use wasm_bindgen::prelude::*;
 
-use crate::{terrain::Terrain, Site2D};
+use crate::{
+    terrain::Terrain,
+    transport::{
+        math::get_cross,
+        treeobj::{PathTree, PathTreeObject, PathTreeQuery},
+    },
+    Site2D,
+};
 
 static SEA_LEVEL: f64 = 1e-3;
 
@@ -32,13 +39,14 @@ struct Path {
 
 impl Ord for Path {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.cost.partial_cmp(&other.cost).unwrap()
+        other.cost.partial_cmp(&self.cost).unwrap()
+        //self.cost.partial_cmp(&other.cost).unwrap()
     }
 }
 
 impl PartialOrd for Path {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.cost.partial_cmp(&other.cost)
+        other.cost.partial_cmp(&self.cost)
     }
 }
 
@@ -122,7 +130,8 @@ impl TransportNetworkBuilder {
         }
 
         let altitude_diff = altitude_to - altitude_from;
-        Some(altitude_diff.abs())
+        Some(altitude_diff.abs() * altitude_to)
+        //Some(altitude_to)
     }
 
     pub fn build(self, seed: u32, terrain: &Terrain) -> TransportNetwork {
@@ -170,7 +179,9 @@ impl TransportNetworkBuilder {
             cost: 0.0,
         });
 
-        let mut final_paths = Vec::new();
+        let mut path_tree = PathTree::new();
+
+        let intersection_distance = self.branch_length * 0.5 * 1.41;
 
         (0..self.iterations).for_each(|_| {
             let current_path = path_heap.pop();
@@ -180,6 +191,59 @@ impl TransportNetworkBuilder {
             let current_path = current_path.unwrap();
             let site_start = sites_collection[current_path.start];
             let site_end = sites_collection[current_path.end];
+
+            // find path intersection
+            let intersection = path_tree.find(
+                &site_start.0,
+                &site_end.0,
+                intersection_distance,
+                &[current_path.start, current_path.end],
+            );
+            let mut intersection_pushed = false;
+            if let PathTreeQuery::Site(site_index) = intersection {
+                path_tree.insert(
+                    current_path.start,
+                    site_index,
+                    site_start.0,
+                    sites_collection[site_index].0,
+                );
+                intersection_pushed = true;
+            } else if let PathTreeQuery::Path(intersection) = intersection {
+                let cross = get_cross(
+                    intersection.site_start,
+                    intersection.site_end,
+                    site_start.0,
+                    site_end.0,
+                );
+                if let Some(cross) = cross {
+                    intersection_pushed = true;
+                    if cross.1 {
+                        let cross_site = cross.0;
+                        let altitude = terrain.get_altitude(cross_site.x, cross_site.y);
+                        if let Some(altitude) = altitude {
+                            // push
+                            let site_next_index = sites_collection.len();
+                            sites_collection.push((cross_site, altitude));
+                            path_tree.insert(
+                                current_path.start,
+                                site_next_index,
+                                site_start.0,
+                                cross_site,
+                            );
+                        }
+                    }
+                }
+            }
+
+            if intersection_pushed {
+                return;
+            }
+            path_tree.insert(
+                current_path.start,
+                current_path.end,
+                site_start.0,
+                site_end.0,
+            );
 
             let mut site_next: Option<Site2D> = None;
             let mut min_cost = std::f64::MAX;
@@ -266,14 +330,12 @@ impl TransportNetworkBuilder {
                     });
                 }
             });
-
-            final_paths.push(current_path);
         });
 
         let mut graph = UndirectedGraph::new(sites_collection.len());
 
-        final_paths.iter().for_each(|path| {
-            graph.add_edge(path.start, path.end);
+        path_tree.for_each(|path| {
+            graph.add_edge(path.site_index_start, path.site_index_end);
         });
 
         TransportNetwork {

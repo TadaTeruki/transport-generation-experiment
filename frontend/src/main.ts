@@ -35,12 +35,12 @@ window.onload = async () => {
 
     const transport = new TransportNetworkBuilder()
         .set_start(bound_max.x / 2.0, bound_max.y / 2.0)
-        .set_iterations(400)
-        .set_branch_angle_deviation(Math.PI / 8.0)
-        .set_branch_length(2.0)
-        .set_rotation_probability(0.1)
-        .set_branch_max_angle(Math.PI / 4.0)
-        .build(800, terrain);
+        .set_iterations(18000)
+        .set_branch_angle_deviation(Math.PI / 64.0)
+        .set_branch_length(1.0)
+        .set_rotation_probability(0.85)
+        .set_branch_max_angle(Math.PI / 30.0)
+        .build(0, terrain);
 
     let canvas = document.getElementById('canvasMain') as HTMLCanvasElement;
     canvas.width = img_width;
@@ -50,7 +50,7 @@ window.onload = async () => {
     imageData.data.set(image_buf);
     ctx.putImageData(imageData, 0, 0);
 
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 2;
     for (let i = 0; i < transport.num_nodes(); i++) {
         const site = transport.get_site(i);
         const neighbors = transport.get_neighbors(i);
