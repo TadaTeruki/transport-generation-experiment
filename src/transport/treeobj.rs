@@ -8,6 +8,7 @@ pub(crate) enum PathTreeQuery<'a> {
     Path(&'a PathTreeObject),
 }
 
+#[derive(Clone, Copy)]
 pub(crate) struct PathTreeObject {
     pub path_index: usize,
     pub site_index_start: usize,
@@ -84,6 +85,10 @@ impl PathTree {
             [site_end.x + diameter, site_end.y + diameter],
         );
         let result = self.tree.locate_in_envelope_intersecting(&envelope);
+        let site_cmp = Site2D {
+            x: (site_start.x + site_end.x) * 0.5,
+            y: (site_start.y + site_end.y) * 0.5,
+        };
         let mut min_distance = diameter;
         let mut min_path = None;
         for item in result {
@@ -92,8 +97,9 @@ impl PathTree {
             {
                 continue;
             }
-            let distance_line = ((item.site_end.y - item.site_start.y) * site_start.x
-                - (item.site_end.x - item.site_start.x) * site_start.y
+
+            let distance_line = ((item.site_end.y - item.site_start.y) * site_cmp.x
+                - (item.site_end.x - item.site_start.x) * site_cmp.y
                 + item.site_end.x * item.site_start.y
                 - item.site_end.y * item.site_start.x)
                 .abs()
@@ -124,9 +130,28 @@ impl PathTree {
 
         PathTreeQuery::None
     }
-
-    pub fn remove(&mut self, path_object: &PathTreeObject) {
-        self.tree.remove(path_object);
+    pub fn split(
+        &mut self,
+        path_object: PathTreeObject,
+        split_site: &Site2D,
+        split_site_index: usize,
+    ) {
+        let remove = self.tree.remove(&path_object);
+        if remove.is_none() {
+            panic!("aaa");
+        }
+        self.insert(
+            path_object.site_index_start,
+            split_site_index,
+            path_object.site_start,
+            *split_site,
+        );
+        self.insert(
+            split_site_index,
+            path_object.site_index_end,
+            *split_site,
+            path_object.site_end,
+        );
     }
 
     pub fn for_each<F>(&self, mut f: F)

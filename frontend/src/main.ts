@@ -35,11 +35,11 @@ window.onload = async () => {
 
     const transport = new TransportNetworkBuilder()
         .set_start(bound_max.x / 2.0, bound_max.y / 2.0)
-        .set_iterations(18000)
-        .set_branch_angle_deviation(Math.PI / 64.0)
+        .set_iterations(12000)
+        .set_branch_angle_deviation(Math.PI / 32.0)
         .set_branch_length(1.0)
-        .set_rotation_probability(0.85)
-        .set_branch_max_angle(Math.PI / 30.0)
+        .set_rotation_probability(0.8)
+        .set_branch_max_angle(Math.PI / 25.0)
         .build(0, terrain);
 
     let canvas = document.getElementById('canvasMain') as HTMLCanvasElement;
@@ -67,7 +67,7 @@ window.onload = async () => {
             ctx.beginPath();
             ctx.moveTo(sx, sy);
             ctx.lineTo(ex, ey);
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
             ctx.stroke();
         }
     }

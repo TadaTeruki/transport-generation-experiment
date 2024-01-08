@@ -8,7 +8,7 @@ use crate::{
     terrain::Terrain,
     transport::{
         math::get_cross,
-        treeobj::{PathTree, PathTreeObject, PathTreeQuery},
+        treeobj::{PathTree, PathTreeQuery},
     },
     Site2D,
 };
@@ -40,7 +40,6 @@ struct Path {
 impl Ord for Path {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other.cost.partial_cmp(&self.cost).unwrap()
-        //self.cost.partial_cmp(&other.cost).unwrap()
     }
 }
 
@@ -181,7 +180,7 @@ impl TransportNetworkBuilder {
 
         let mut path_tree = PathTree::new();
 
-        let intersection_distance = self.branch_length * 0.5 * 1.41;
+        let intersection_distance = self.branch_length * 0.8;
 
         (0..self.iterations).for_each(|_| {
             let current_path = path_heap.pop();
@@ -197,7 +196,7 @@ impl TransportNetworkBuilder {
                 &site_start.0,
                 &site_end.0,
                 intersection_distance,
-                &[current_path.start, current_path.end],
+                &[current_path.start],
             );
             let mut intersection_pushed = false;
             if let PathTreeQuery::Site(site_index) = intersection {
@@ -224,6 +223,7 @@ impl TransportNetworkBuilder {
                             // push
                             let site_next_index = sites_collection.len();
                             sites_collection.push((cross_site, altitude));
+                            path_tree.split(*intersection, &cross_site, site_next_index);
                             path_tree.insert(
                                 current_path.start,
                                 site_next_index,
@@ -245,11 +245,8 @@ impl TransportNetworkBuilder {
                 site_end.0,
             );
 
-            let mut site_next: Option<Site2D> = None;
-            let mut min_cost = std::f64::MAX;
-            let mut min_cost_angle = current_path.angle;
-            let mut min_cost_altitude = 0.0;
-            let check_times = (self.branch_max_angle / self.branch_angle_deviation).ceil() as usize;
+            let check_times =
+                (self.branch_max_angle / self.branch_angle_deviation).floor() as usize;
 
             let rotation_iteration_start = {
                 if rng.gen_bool(self.rotation_probability) {
@@ -267,8 +264,13 @@ impl TransportNetworkBuilder {
             };
 
             (rotation_iteration_start..rotation_iteration_end + 1).for_each(|riter| {
+                let mut site_next: Option<Site2D> = None;
+                let mut min_cost = std::f64::MAX;
+                let mut min_cost_angle = 0.0;
+                let mut min_cost_altitude = 0.0;
+
                 let current_angle = current_path.angle + riter as f64 * std::f64::consts::PI * 0.5;
-                (0..check_times).for_each(|i| {
+                (0..check_times + 1).for_each(|i| {
                     let angle = current_angle + self.branch_angle_deviation * (i as f64);
                     let site_a = Site2D {
                         x: site_end.0.x + self.branch_length * angle.cos(),
@@ -335,6 +337,9 @@ impl TransportNetworkBuilder {
         let mut graph = UndirectedGraph::new(sites_collection.len());
 
         path_tree.for_each(|path| {
+            if graph.has_edge(path.site_index_start, path.site_index_end) {
+                return;
+            }
             graph.add_edge(path.site_index_start, path.site_index_end);
         });
 
