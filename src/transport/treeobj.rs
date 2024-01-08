@@ -2,6 +2,8 @@ use rstar::{RTree, RTreeObject, AABB};
 
 use crate::Site2D;
 
+use super::transport::PathAttr;
+
 pub(crate) enum PathTreeQuery<'a> {
     None,
     Site(usize),
@@ -15,6 +17,7 @@ pub(crate) struct PathTreeObject {
     pub site_index_end: usize,
     pub site_start: Site2D,
     pub site_end: Site2D,
+    pub path_attr: PathAttr,
 }
 
 impl RTreeObject for PathTreeObject {
@@ -61,15 +64,17 @@ impl PathTree {
         site_index_end: usize,
         site_start: Site2D,
         site_end: Site2D,
+        path_attr: PathAttr,
     ) {
         let path_index = self.next_path_index;
         self.next_path_index += 1;
         self.tree.insert(PathTreeObject {
-            path_index: path_index,
+            path_index,
             site_start,
             site_end,
             site_index_start,
             site_index_end,
+            path_attr,
         });
     }
 
@@ -145,12 +150,14 @@ impl PathTree {
             split_site_index,
             path_object.site_start,
             *split_site,
+            path_object.path_attr,
         );
         self.insert(
             split_site_index,
             path_object.site_index_end,
             *split_site,
             path_object.site_end,
+            path_object.path_attr,
         );
     }
 

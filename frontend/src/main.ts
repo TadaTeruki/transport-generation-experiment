@@ -35,11 +35,15 @@ window.onload = async () => {
 
     const transport = new TransportNetworkBuilder()
         .set_start(bound_max.x / 2.0, bound_max.y / 2.0)
-        .set_iterations(12000)
-        .set_branch_angle_deviation(Math.PI / 32.0)
-        .set_branch_length(1.0)
-        .set_rotation_probability(0.8)
-        .set_branch_max_angle(Math.PI / 25.0)
+        .set_iterations(34000)
+        .set_branch_angle_deviation(Math.PI / 40.0)
+        .set_branch_length(0.5)
+        .set_normal_rotation_probability(0.8)
+        .set_highway_rotation_probability(0.02)
+        .set_highway_construction_priority(30.0)
+        .set_even_path_length_weight(1.5)
+        .set_highway_path_length_weight(1.5)
+        .set_branch_max_angle(Math.PI / 40.0)
         .build(0, terrain);
 
     let canvas = document.getElementById('canvasMain') as HTMLCanvasElement;
@@ -50,12 +54,15 @@ window.onload = async () => {
     imageData.data.set(image_buf);
     ctx.putImageData(imageData, 0, 0);
 
-    ctx.lineWidth = 2;
+    // white
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+    ctx.fillRect(0, 0, img_width, img_height);
+
     for (let i = 0; i < transport.num_nodes(); i++) {
         const site = transport.get_site(i);
         const neighbors = transport.get_neighbors(i);
         for (let j = 0; j < neighbors.length; j++) {
-            const neighbor = transport.get_site(neighbors[j]);
+            const neighbor = transport.get_site(neighbors[j].index);
             const [sx, sy] = [
                 (site.x / bound_max.x) * img_width,
                 (site.y / bound_max.y) * img_height,
@@ -64,10 +71,18 @@ window.onload = async () => {
                 (neighbor.x / bound_max.x) * img_width,
                 (neighbor.y / bound_max.y) * img_height,
             ];
+            let lineWidth = 0.0;
+            if (neighbors[j].is_highway) {
+                lineWidth = 2;
+            } else {
+                lineWidth = 0.5;
+            }
             ctx.beginPath();
             ctx.moveTo(sx, sy);
             ctx.lineTo(ex, ey);
-            ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+
+            ctx.lineWidth = lineWidth;
+            ctx.strokeStyle = 'rgba(50, 50, 50, 0.7)';
             ctx.stroke();
         }
     }
